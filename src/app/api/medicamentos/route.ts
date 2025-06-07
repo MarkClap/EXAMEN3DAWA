@@ -12,6 +12,15 @@ interface MedicamentoRequest {
   tipoMedicamentoId: number
 }
 
+function isPrismaError(error: unknown): error is { code: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as any).code === 'string'
+  )
+}
+
 // GET - Obtener todos los medicamentos O uno específico por ID
 export async function GET(request: NextRequest) {
   try {
@@ -19,14 +28,10 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
-      // Obtener medicamento específico por ID
       const medicamentoId = parseInt(id)
-      
+
       if (isNaN(medicamentoId)) {
-        return NextResponse.json(
-          { error: 'ID inválido' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
       }
 
       const medicamento = await prisma.medicamento.findUnique({
@@ -45,19 +50,18 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json(medicamento)
     } else {
-      // Obtener todos los medicamentos
       const medicamentos = await prisma.medicamento.findMany({
         include: {
           tipoMedicamento: true,
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       })
-      
+
       return NextResponse.json(medicamentos)
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error al obtener medicamentos:', error)
     return NextResponse.json(
       { error: 'Error al obtener medicamentos' },
@@ -70,31 +74,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: MedicamentoRequest = await request.json()
-    const { 
-      nombre, 
-      descripcion, 
-      precio, 
-      stock, 
-      fechaVencimiento, 
-      laboratorio, 
-      tipoMedicamentoId 
+    const {
+      nombre,
+      descripcion,
+      precio,
+      stock,
+      fechaVencimiento,
+      laboratorio,
+      tipoMedicamentoId,
     } = body
 
-    // Validaciones básicas
     const errors: string[] = []
-    
+
     if (!nombre || nombre.trim() === '') {
       errors.push('El nombre es requerido')
     }
-    
+
     if (!precio || precio <= 0) {
       errors.push('El precio debe ser mayor a 0')
     }
-    
+
     if (stock === undefined || stock < 0) {
       errors.push('El stock no puede ser negativo')
     }
-    
+
     if (!fechaVencimiento) {
       errors.push('La fecha de vencimiento es requerida')
     } else {
@@ -104,11 +107,11 @@ export async function POST(request: NextRequest) {
         errors.push('La fecha de vencimiento debe ser posterior a hoy')
       }
     }
-    
+
     if (!laboratorio || laboratorio.trim() === '') {
       errors.push('El laboratorio es requerido')
     }
-    
+
     if (!tipoMedicamentoId) {
       errors.push('El tipo de medicamento es requerido')
     }
@@ -120,9 +123,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar que existe el tipo de medicamento
     const tipoExiste = await prisma.tipoMedicamento.findUnique({
-      where: { id: parseInt(tipoMedicamentoId.toString()) }
+      where: { id: parseInt(tipoMedicamentoId.toString()) },
     })
 
     if (!tipoExiste) {
@@ -148,7 +150,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(nuevoMedicamento, { status: 201 })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error al crear medicamento:', error)
     return NextResponse.json(
       { error: 'Error al crear medicamento' },
@@ -161,15 +163,15 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body: MedicamentoRequest = await request.json()
-    const { 
+    const {
       id,
-      nombre, 
-      descripcion, 
-      precio, 
-      stock, 
-      fechaVencimiento, 
-      laboratorio, 
-      tipoMedicamentoId 
+      nombre,
+      descripcion,
+      precio,
+      stock,
+      fechaVencimiento,
+      laboratorio,
+      tipoMedicamentoId,
     } = body
 
     if (!id || isNaN(id)) {
@@ -179,29 +181,28 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Validaciones básicas
     const errors: string[] = []
-    
+
     if (!nombre || nombre.trim() === '') {
       errors.push('El nombre es requerido')
     }
-    
+
     if (!precio || precio <= 0) {
       errors.push('El precio debe ser mayor a 0')
     }
-    
+
     if (stock === undefined || stock < 0) {
       errors.push('El stock no puede ser negativo')
     }
-    
+
     if (!fechaVencimiento) {
       errors.push('La fecha de vencimiento es requerida')
     }
-    
+
     if (!laboratorio || laboratorio.trim() === '') {
       errors.push('El laboratorio es requerido')
     }
-    
+
     if (!tipoMedicamentoId) {
       errors.push('El tipo de medicamento es requerido')
     }
@@ -213,9 +214,8 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Verificar que existe el tipo de medicamento
     const tipoExiste = await prisma.tipoMedicamento.findUnique({
-      where: { id: parseInt(tipoMedicamentoId.toString()) }
+      where: { id: parseInt(tipoMedicamentoId.toString()) },
     })
 
     if (!tipoExiste) {
@@ -242,16 +242,18 @@ export async function PUT(request: NextRequest) {
     })
 
     return NextResponse.json(medicamentoActualizado)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al actualizar medicamento:', error)
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Medicamento no encontrado' },
-        { status: 404 }
-      )
+
+    if (isPrismaError(error)) {
+      if (error.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Medicamento no encontrado' },
+          { status: 404 }
+        )
+      }
     }
-    
+
     return NextResponse.json(
       { error: 'Error al actualizar medicamento' },
       { status: 500 }
@@ -282,16 +284,16 @@ export async function DELETE(request: NextRequest) {
       { message: 'Medicamento eliminado correctamente' },
       { status: 200 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al eliminar medicamento:', error)
-    
-    if (error.code === 'P2025') {
+
+    if (isPrismaError(error) && error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Medicamento no encontrado' },
         { status: 404 }
       )
     }
-    
+
     return NextResponse.json(
       { error: 'Error al eliminar medicamento' },
       { status: 500 }

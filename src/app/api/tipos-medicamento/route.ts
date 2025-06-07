@@ -80,17 +80,20 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(nuevoTipo, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al crear tipo de medicamento:', error)
-    
-    // Manejar error de nombre duplicado
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'Ya existe un tipo de medicamento con ese nombre' },
-        { status: 409 }
-      )
+
+    if (error && typeof error === 'object' && 'code' in error) {
+      const err = error as { code?: string }
+
+      if (err.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Ya existe un tipo de medicamento con ese nombre' },
+          { status: 409 }
+        )
+      }
     }
-    
+
     return NextResponse.json(
       { error: 'Error al crear tipo de medicamento' },
       { status: 500 }
@@ -130,23 +133,27 @@ export async function PUT(request: NextRequest) {
     })
 
     return NextResponse.json(tipoActualizado)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al actualizar tipo de medicamento:', error)
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Tipo de medicamento no encontrado' },
-        { status: 404 }
-      )
+
+    if (error && typeof error === 'object' && 'code' in error) {
+      const err = error as { code?: string }
+
+      if (err.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Tipo de medicamento no encontrado' },
+          { status: 404 }
+        )
+      }
+
+      if (err.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Ya existe un tipo de medicamento con ese nombre' },
+          { status: 409 }
+        )
+      }
     }
-    
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'Ya existe un tipo de medicamento con ese nombre' },
-        { status: 409 }
-      )
-    }
-    
+
     return NextResponse.json(
       { error: 'Error al actualizar tipo de medicamento' },
       { status: 500 }
@@ -189,16 +196,20 @@ export async function DELETE(request: NextRequest) {
       { message: 'Tipo de medicamento eliminado correctamente' },
       { status: 200 }
     )
-  } catch (error: any) {
+    } catch (error: unknown) {
     console.error('Error al eliminar tipo de medicamento:', error)
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Tipo de medicamento no encontrado' },
-        { status: 404 }
-      )
+
+    if (error && typeof error === 'object' && 'code' in error) {
+      const err = error as { code?: string }
+
+      if (err.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Tipo de medicamento no encontrado' },
+          { status: 404 }
+        )
+      }
     }
-    
+
     return NextResponse.json(
       { error: 'Error al eliminar tipo de medicamento' },
       { status: 500 }
